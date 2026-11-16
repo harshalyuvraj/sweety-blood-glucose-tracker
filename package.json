@@ -1,0 +1,15 @@
+{
+  "name": "sweety",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.13.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:api": "pnpm --filter @sweety/api dev",
+    "dev:web": "pnpm --filter @sweety/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test"
+  }
+}
