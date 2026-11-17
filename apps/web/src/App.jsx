@@ -4,6 +4,8 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 import ProtectedRoute from './features/auth/ProtectedRoute.jsx';
+import ReadingsPage from './pages/readings/ReadingsPage.jsx';
+import ReportsPage from './pages/reports/ReportsPage.jsx';
 
 function App() {
   return (
@@ -17,14 +19,8 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/" element={<DashboardPage />} />
-            <Route
-              path="/readings"
-              element={<div>Readings page coming soon.</div>}
-            />
-            <Route
-              path="/reports"
-              element={<div>Reports page coming soon.</div>}
-            />
+            <Route path="/readings" element={<ReadingsPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
           </Route>
         </Route>
 

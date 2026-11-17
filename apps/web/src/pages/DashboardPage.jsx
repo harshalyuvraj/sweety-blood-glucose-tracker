@@ -1,39 +1,40 @@
-
+import { useEffect, useState } from 'react';
 import {
   Activity,
   TrendingUp,
   TrendingDown,
   Droplets,
 } from 'lucide-react';
+import api from '../lib/api.js';
 
 const summaryCards = [
   {
+    key: 'average',
     title: "Today's Average",
-    value: '--',
     unit: 'mg/dL',
     description: 'Average glucose level',
     icon: Activity,
     iconStyle: 'bg-brand-50 text-brand-700',
   },
   {
+    key: 'high',
     title: 'Highest Reading',
-    value: '--',
     unit: 'mg/dL',
     description: "Today's highest level",
     icon: TrendingUp,
     iconStyle: 'bg-rose-50 text-rose-600',
   },
   {
+    key: 'low',
     title: 'Lowest Reading',
-    value: '--',
     unit: 'mg/dL',
     description: "Today's lowest level",
     icon: TrendingDown,
     iconStyle: 'bg-sky-50 text-sky-600',
   },
   {
+    key: 'count',
     title: 'Total Readings',
-    value: '0',
     unit: 'readings',
     description: 'Recorded today',
     icon: Droplets,
@@ -42,6 +43,39 @@ const summaryCards = [
 ];
 
 function DashboardPage() {
+  const [summary, setSummary] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function fetchDailyReport() {
+      try {
+        setIsLoading(true);
+        setError('');
+
+        const response = await api.get('/reports/daily');
+
+        setSummary(response.data.data);
+      } catch (err) {
+        setError(
+          err.response?.data?.message ||
+            'Unable to load your dashboard data. Please try again.',
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchDailyReport();
+  }, []);
+
+  const cards = summaryCards.map((card) => ({
+    ...card,
+    value: isLoading
+      ? '...'
+      : summary?.[card.key] ?? (card.key === 'count' ? 0 : '--'),
+  }));
+
   return (
     <div className="space-y-8">
       {/* Page heading */}
@@ -54,14 +88,24 @@ function DashboardPage() {
         </p>
       </section>
 
+      {/* Error message */}
+      {error && (
+        <div
+          role="alert"
+          className="rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700"
+        >
+          {error}
+        </div>
+      )}
+
       {/* Summary cards */}
       <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {summaryCards.map((card) => {
+        {cards.map((card) => {
           const Icon = card.icon;
 
           return (
             <article
-              key={card.title}
+              key={card.key}
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
             >
               <div className="flex items-center justify-between">
@@ -78,6 +122,7 @@ function DashboardPage() {
                 <span className="text-3xl font-bold tracking-tight text-slate-900">
                   {card.value}
                 </span>
+
                 <span className="text-sm text-slate-500">
                   {card.unit}
                 </span>
