@@ -1,6 +1,6 @@
 # Sweety – Blood Glucose Tracker
 
-Sweety is a full-stack blood glucose tracking application that helps users record their daily glucose readings, manage their reading history, and monitor their glucose levels through daily and monthly reports.
+Sweety is a full-stack blood glucose tracking application that helps users record their daily glucose readings, manage their reading history, and monitor glucose levels through daily and monthly reports.
 
 The application supports individual user accounts, secure authentication, input validation, and user-specific data access.
 
@@ -23,13 +23,15 @@ The application supports individual user accounts, secure authentication, input 
 - Reading values restricted to 40–600 mg/dL.
 - Maximum one reading per slot per day.
 - Future-dated readings are not allowed.
+- Paginated reading history.
 
 ### Reports
 - Daily glucose summary.
-- Month-to-date summary.
-- Previous-month summary.
+- Month-to-date summary, covering the first day of the selected month through the selected date.
+- Previous full calendar month summary.
 - Average, minimum, maximum, and total reading count.
 - Daily breakdown by reading slot.
+- Monthly glucose trend chart with daily averages.
 
 ### Additional Features
 - Responsive React interface.
@@ -37,6 +39,7 @@ The application supports individual user accounts, secure authentication, input 
 - PostgreSQL database with relational constraints.
 - Repeatable demo-data seed script.
 - Automated frontend and backend tests.
+- Docker Compose deployment for the database, API, and frontend.
 
 ## Tech Stack
 
@@ -51,8 +54,9 @@ The application supports individual user accounts, secure authentication, input 
 | Validation | Zod |
 | API Client | Axios |
 | Routing | React Router |
+| Charts | Recharts |
 | Testing | Vitest, Supertest, React Testing Library |
-| Containerization | Docker Compose |
+| Containerization | Docker, Docker Compose, Nginx |
 | Package Manager | pnpm |
 
 ## Project Structure
@@ -81,12 +85,20 @@ sweety/
 │       │   └── App.jsx
 │       └── package.json
 ├── database/
-│   ├── migrations/
+│   └── migrations/
+│       └── 001_create_initial_schema.sql
+├── docker/
+│   ├── api/
+│   │   └── Dockerfile
+│   └── web/
+│       ├── Dockerfile
+│       └── nginx.conf
 ├── docs/
 ├── docker-compose.yml
+├── .dockerignore
+├── .env.example
 ├── package.json
 ├── pnpm-workspace.yaml
-├── .env.example
 └── README.md
 ```
 
@@ -99,7 +111,7 @@ Install the following before running the application:
 - Docker Desktop with Docker Compose.
 - Git.
 
-## Getting Started
+## Getting Started – Local Development
 
 ### 1. Clone the repository
 
@@ -156,6 +168,7 @@ Verify that the database container is running:
 ```bash
 docker compose ps
 ```
+
 > **Note:** The current Docker Compose configuration uses a WSL-specific host directory for PostgreSQL persistence. If you are running the project in another environment, update the PostgreSQL volume mapping in `docker-compose.yml` to a suitable local directory or Docker named volume.
 
 ### 5. Apply database migrations
@@ -202,6 +215,88 @@ The frontend will be available at:
 
 `http://localhost:5173`
 
+## Running with Docker Compose
+
+Docker Compose can run the complete application using the API and frontend production images.
+
+### 1. Configure environment variables
+
+Make sure the root `.env` file exists and contains valid values for:
+
+- `DB_PASSWORD`
+- `JWT_SECRET`
+- `JWT_EXPIRES_IN`
+- `SEED_DEMO_NAME`
+- `SEED_DEMO_EMAIL`
+- `SEED_DEMO_PASSWORD`
+
+### 2. Start PostgreSQL
+
+```bash
+docker compose up -d postgres
+```
+
+### 3. Apply the database migration
+
+For a new database, apply the schema before starting the API:
+
+```bash
+docker exec -i sweety-postgres psql -U sweety_user -d sweety < database/migrations/001_create_initial_schema.sql
+```
+
+If the schema has already been applied, do not apply the initial migration again.
+
+
+### 4. Build and start the complete application
+
+```bash
+docker compose up -d --build
+```
+
+Wait until the PostgreSQL and API containers report healthy and the frontend container is running:
+
+```bash
+docker compose ps
+```
+
+
+### 5. Seed demo data
+
+After the API container is running and healthy, execute:
+
+```bash
+docker compose exec api node src/scripts/seed.js
+```
+
+This creates the demo account and sample readings using the seed configuration in `.env`.
+
+
+### 6. Access the application
+
+| Service | Address |
+|---|---|
+| Frontend | `http://localhost:8080` |
+| API | Internal Docker network, port 5000 |
+| PostgreSQL | `localhost:5432` |
+
+Nginx serves the frontend and forwards `/api` requests to the backend API.
+
+To view application logs:
+
+```bash
+docker compose logs -f
+```
+
+To stop the application:
+
+```bash
+docker compose down
+```
+
+This command stops and removes the containers but preserves the PostgreSQL data directory.
+
+> **Note:** The current PostgreSQL volume mapping uses `/home/harsh/docker-data/sweety/postgres` and is configured for the development environment used for this project. Update it when deploying in another environment.
+
 ## API Endpoints
 
 All endpoints return JSON responses.
@@ -218,30 +313,40 @@ All endpoints return JSON responses.
 | Method | Endpoint | Description |
 |---|---|---|
 | POST | `/api/readings` | Create a reading |
-| GET | `/api/readings` | Get all readings |
+| GET | `/api/readings` | Get paginated readings |
 | GET | `/api/readings/:id` | Get a reading by ID |
 | PUT | `/api/readings/:id` | Update a reading |
 | DELETE | `/api/readings/:id` | Delete a reading |
 
 All reading endpoints require authentication.
 
+The readings endpoint supports pagination using `page` and `limit` query parameters.
+
+Example:
+
+```text
+GET /api/readings?page=1&limit=20
+```
+
 ### Reports
 
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/reports/daily` | Get daily report |
-| GET | `/api/reports/month-to-date` | Get current month report |
-| GET | `/api/reports/previous-month` | Get previous month report |
+| GET | `/api/reports/month-to-date` | Get month-to-date report and daily trends |
+| GET | `/api/reports/previous-month` | Get previous full month report |
 
 All report endpoints require authentication.
 
 The daily report accepts an optional `date` query parameter in `YYYY-MM-DD` format.
 
+The month-to-date report supports a selected date, and the previous-month report covers the complete preceding calendar month.
+
 ### Health Check
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/health` | Check API health |
+| GET | `/api/health` | Check API and database health |
 
 ## Testing
 
@@ -249,12 +354,6 @@ Run all project tests from the repository root:
 
 ```bash
 pnpm test
-```
-
-Build the frontend:
-
-```bash
-pnpm --filter @sweety/web build
 ```
 
 Run backend tests independently:
@@ -268,6 +367,20 @@ Run frontend tests independently:
 ```bash
 pnpm --filter @sweety/web test
 ```
+
+Build the frontend:
+
+```bash
+pnpm --filter @sweety/web build
+```
+
+Build all workspaces:
+
+```bash
+pnpm build
+```
+
+The test suites cover backend API behavior, validation, authentication, frontend components, reading management, reports, and monthly trend chart behavior.
 
 ## Demo Account
 
@@ -289,7 +402,30 @@ For security, demo credentials should be configured locally and should not conta
 - Input validation is performed using Zod.
 - Database queries use parameterized statements.
 - User deletion cascades to associated readings.
+- Environment secrets are excluded from version control.
+
+## Notes and Assumptions
+
+- Glucose readings are recorded in mg/dL.
+- Valid reading values are restricted to the range 40–600 mg/dL.
+- Each user can record at most one reading for each of the four daily slots on a given date.
+- A reading date cannot be in the future.
+- Month-to-date reports cover the first day of the selected month through the selected date.
+- Previous-month reports cover the entire preceding calendar month.
+- Reading history and reports are isolated by authenticated user.
+- The demo account and its sample readings are provided through the seed script.
+
+## Future Improvements
+
+Given more development time, the application could be extended with:
+
+- Redis-based caching for frequently requested reports.
+- Background processing for scheduled reports and notifications.
+- More advanced analytics, including configurable glucose ranges and historical comparisons.
+- Additional automated end-to-end tests.
+- More granular roles and access control for healthcare professionals.
+- Production deployment with managed PostgreSQL, HTTPS, monitoring, and automated backups.
 
 ## License
 
-This project was developed as a full-stack application project.
+No open-source license has been specified for this project.
