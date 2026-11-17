@@ -1,20 +1,37 @@
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import AppLayout from './components/layout/AppLayout.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
+import LoginPage from './pages/auth/LoginPage.jsx';
+import RegisterPage from './pages/auth/RegisterPage.jsx';
+import ProtectedRoute from './features/auth/ProtectedRoute.jsx';
+
 function App() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-50">
-      <section className="text-center space-y-4 p-8">
-        <h1 className="text-4xl font-bold text-slate-900">
-          Sweety
-        </h1>
+    <BrowserRouter>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-        <p className="text-slate-600 text-lg">
-          Your Blood Glucose Tracker
-        </p>
+        {/* Protected routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<DashboardPage />} />
+            <Route
+              path="/readings"
+              element={<div>Readings page coming soon.</div>}
+            />
+            <Route
+              path="/reports"
+              element={<div>Reports page coming soon.</div>}
+            />
+          </Route>
+        </Route>
 
-        <p className="text-emerald-600 font-medium">
-          Frontend is running successfully!
-        </p>
-      </section>
-    </main>
+        {/* Unknown routes */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
