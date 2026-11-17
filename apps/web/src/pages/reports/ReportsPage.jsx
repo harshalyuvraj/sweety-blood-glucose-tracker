@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CalendarDays, Activity, TrendingUp, TrendingDown, Droplets } from 'lucide-react';
 import { reportsService } from '../../features/reports/reportsService.js';
+import MonthlyTrendChart from '../../features/reports/components/MonthlyTrendChart.jsx';
 
 const REPORT_TYPES = [
   { value: 'daily', label: 'Daily Report' },
@@ -238,6 +239,10 @@ function ReportsPage() {
               />
             ))}
           </section>
+
+          {reportType === 'monthToDate' && (
+            <MonthlyTrendChart data={report.daily_trends || []} />
+          )}
 
           {reportType === 'daily' && (
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

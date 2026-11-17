@@ -59,6 +59,29 @@ describe('ReportsPage', () => {
       high: 180,
       low: 110,
       count: 5,
+      daily_trends: [
+        {
+          date: '2026-11-01',
+          average: 130,
+          low: 120,
+          high: 140,
+          count: 2,
+        },
+        {
+          date: '2026-11-02',
+          average: null,
+          low: null,
+          high: null,
+          count: 0,
+        },
+        {
+          date: '2026-11-03',
+          average: 150,
+          low: 135,
+          high: 165,
+          count: 3,
+        },
+      ],
     });
 
     reportsServiceMock.getPreviousMonth.mockResolvedValue({

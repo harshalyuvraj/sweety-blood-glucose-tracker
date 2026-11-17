@@ -50,6 +50,59 @@ const getSummary = async (userId, startDate, endDate) => {
   };
 };
 
+// Retrieve daily statistics for a user's readings in a date range.
+const getDailyTrends = async (userId, startDate, endDate) => {
+  const result = await query(
+    `SELECT
+       TO_CHAR(reading_date, 'YYYY-MM-DD') AS date,
+       ROUND(AVG(value), 1) AS average,
+       MIN(value) AS low,
+       MAX(value) AS high,
+       COUNT(*)::INTEGER AS count
+     FROM readings
+     WHERE user_id = $1
+       AND reading_date >= $2
+       AND reading_date <= $3
+     GROUP BY reading_date
+     ORDER BY reading_date ASC`,
+    [userId, startDate, endDate]
+  );
+
+  const trendsByDate = new Map(
+    result.rows.map((row) => [
+      row.date,
+      {
+        average: row.average === null ? null : Number(row.average),
+        low: row.low,
+        high: row.high,
+        count: row.count,
+      },
+    ])
+  );
+
+  const dailyTrends = [];
+  const currentDate = new Date(`${startDate}T00:00:00.000Z`);
+  const lastDate = new Date(`${endDate}T00:00:00.000Z`);
+
+  while (currentDate <= lastDate) {
+    const date = currentDate.toISOString().slice(0, 10);
+
+    dailyTrends.push({
+      date,
+      ...(trendsByDate.get(date) || {
+        average: null,
+        low: null,
+        high: null,
+        count: 0,
+      }),
+    });
+
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+  }
+
+  return dailyTrends;
+};
+
 // Daily report with individual reading slots.
 export const getDailyReport = async (userId, date = getIndiaToday()) => {
   validateReportDate(date);
@@ -91,12 +144,16 @@ export const getMonthToDateReport = async (
 
   const startDate = `${date.slice(0, 7)}-01`;
 
-  const summary = await getSummary(userId, startDate, date);
+  const [summary, dailyTrends] = await Promise.all([
+    getSummary(userId, startDate, date),
+    getDailyTrends(userId, startDate, date),
+  ]);
 
   return {
     start_date: startDate,
     end_date: date,
     ...summary,
+    daily_trends: dailyTrends,
   };
 };
 
