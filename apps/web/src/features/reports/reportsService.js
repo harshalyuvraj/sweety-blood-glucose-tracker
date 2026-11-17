@@ -1,3 +1,4 @@
+
 import api from '../../lib/api.js';
 
 export const reportsService = {
@@ -9,8 +10,11 @@ export const reportsService = {
     return response.data.data;
   },
 
-  async getMonthToDate() {
-    const response = await api.get('/reports/month-to-date');
+  async getMonthToDate(date) {
+    const response = await api.get('/reports/month-to-date', {
+      params: date ? { date } : {},
+    });
+
     return response.data.data;
   },
 

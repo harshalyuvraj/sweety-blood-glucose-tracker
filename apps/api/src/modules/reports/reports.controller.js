@@ -34,7 +34,10 @@ export const dailyReport = async (req, res) => {
 
 export const monthToDateReport = async (req, res) => {
   try {
-    const report = await getMonthToDateReport(req.user.id);
+    const report = await getMonthToDateReport(
+      req.user.id,
+      req.validated.query.date
+    );
 
     return res.status(200).json({
       success: true,

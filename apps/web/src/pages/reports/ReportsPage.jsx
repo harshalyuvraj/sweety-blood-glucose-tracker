@@ -94,7 +94,7 @@ function ReportsPage() {
         if (reportType === 'daily') {
           data = await reportsService.getDaily(selectedDate);
         } else if (reportType === 'monthToDate') {
-          data = await reportsService.getMonthToDate();
+          data = await reportsService.getMonthToDate(selectedDate);
         } else {
           data = await reportsService.getPreviousMonth();
         }
@@ -183,7 +183,7 @@ function ReportsPage() {
           ))}
         </div>
 
-        {reportType === 'daily' && (
+        {(reportType === 'daily' || reportType === 'monthToDate') && (
           <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
             <CalendarDays size={18} className="text-slate-500" />
             <input

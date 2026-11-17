@@ -82,16 +82,20 @@ export const getDailyReport = async (userId, date = getIndiaToday()) => {
   };
 };
 
-// Month-to-date report.
-export const getMonthToDateReport = async (userId) => {
-  const today = getIndiaToday();
-  const startDate = `${today.slice(0, 7)}-01`;
+// Month-to-date report, from the first day of the selected month to the selected date.
+export const getMonthToDateReport = async (
+  userId,
+  date = getIndiaToday()
+) => {
+  validateReportDate(date);
 
-  const summary = await getSummary(userId, startDate, today);
+  const startDate = `${date.slice(0, 7)}-01`;
+
+  const summary = await getSummary(userId, startDate, date);
 
   return {
     start_date: startDate,
-    end_date: today,
+    end_date: date,
     ...summary,
   };
 };

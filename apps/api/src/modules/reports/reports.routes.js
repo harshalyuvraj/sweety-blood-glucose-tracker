@@ -15,7 +15,13 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/daily', validate(dailyReportSchema, 'query'), dailyReport);
-router.get('/month-to-date', monthToDateReport);
+
+router.get(
+  '/month-to-date',
+  validate(dailyReportSchema, 'query'),
+  monthToDateReport
+);
+
 router.get('/previous-month', previousMonthReport);
 
 export default router;

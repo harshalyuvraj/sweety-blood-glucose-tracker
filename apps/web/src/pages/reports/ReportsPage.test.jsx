@@ -12,6 +12,7 @@ import {
   screen,
   waitFor,
   cleanup,
+  fireEvent,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ReportsPage from './ReportsPage.jsx';
@@ -105,6 +106,32 @@ describe('ReportsPage', () => {
 
     expect(reportsServiceMock.getMonthToDate).toHaveBeenCalledOnce();
     expect(screen.queryByText('Daily Readings')).not.toBeInTheDocument();
+  });
+
+  it('uses the selected date for the month-to-date report', async () => {
+    const user = userEvent.setup();
+
+    render(<ReportsPage />);
+
+    await screen.findByText('Daily Readings');
+
+    await user.click(
+      screen.getByRole('button', { name: /month to date/i }),
+    );
+
+    const dateInput = screen.getByLabelText('Select report date');
+
+    expect(dateInput).toBeInTheDocument();
+
+    fireEvent.change(dateInput, {
+      target: { value: '2026-10-15' },
+    });
+
+    await waitFor(() => {
+      expect(reportsServiceMock.getMonthToDate).toHaveBeenLastCalledWith(
+        '2026-10-15',
+      );
+    });
   });
 
   it('loads the previous-month report when selected', async () => {
