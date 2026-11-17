@@ -41,6 +41,40 @@ The application supports individual user accounts, secure authentication, input 
 - Automated frontend and backend tests.
 - Docker Compose deployment for the database, API, and frontend.
 
+
+## Screenshots
+
+### Authentication
+
+| Sign In | Sign Up |
+|---|---|
+| <img src="./docs/screenshots/signin-page.png" width="480" alt="Sign in page"> | <img src="./docs/screenshots/signup-page.png" width="480" alt="Sign up page"> |
+
+### Dashboard
+
+<img src="./docs/screenshots/dashboard.png" width="900" alt="Sweety dashboard">
+
+### Blood Glucose Readings
+
+<img src="./docs/screenshots/readings.png" width="900" alt="Blood glucose readings list">
+
+| Add Reading | Select Reading Date |
+|---|---|
+| <img src="./docs/screenshots/add-reading.png" width="480" alt="Add reading form"> | <img src="./docs/screenshots/add-reading-date.png" width="480" alt="Reading date selection"> |
+
+<img src="./docs/screenshots/add-reading-timeslot.png" width="600" alt="Reading time slot selection">
+
+### Reports
+
+<img src="./docs/screenshots/daily-report.png" width="900" alt="Daily glucose report">
+
+<img src="./docs/screenshots/daily-report-date.png" width="900" alt="Daily report date selection">
+
+<img src="./docs/screenshots/monthly-reports.png" width="900" alt="Monthly glucose trend report">
+
+<img src="./docs/screenshots/previous-month-report.png" width="900" alt="Previous month glucose report">
+
+
 ## Tech Stack
 
 | Layer | Technologies |
