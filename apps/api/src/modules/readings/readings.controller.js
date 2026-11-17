@@ -22,14 +22,18 @@ export const create = async (req, res) => {
   }
 };
 
-// GET /api/readings
+// GET /api/readings?page=1&limit=20
 export const getAll = async (req, res) => {
   try {
-    const readings = await getReadings(req.user.id);
+    const result = await getReadings(
+      req.user.id,
+      req.validated.query
+    );
 
     return res.status(200).json({
       success: true,
-      data: readings,
+      data: result.readings,
+      pagination: result.pagination,
     });
   } catch (error) {
     return handleError(res, error, 'Failed to retrieve readings.');

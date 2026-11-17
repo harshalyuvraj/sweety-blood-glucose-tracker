@@ -78,29 +78,51 @@ export const createReading = async (userId, readingData) => {
   }
 };
 
-// Retrieve all readings belonging to a user.
-export const getReadings = async (userId) => {
-  const result = await query(
-    `SELECT
-       id,
-       TO_CHAR(reading_date, 'YYYY-MM-DD') AS reading_date,
-       slot,
-       value,
-       created_at,
-       updated_at
-     FROM readings
-     WHERE user_id = $1
-     ORDER BY reading_date DESC,
-              CASE slot
-                WHEN 'morning' THEN 1
-                WHEN 'after_breakfast' THEN 2
-                WHEN 'after_lunch' THEN 3
-                WHEN 'after_dinner' THEN 4
-              END ASC`,
-    [userId]
-  );
+// Retrieve a paginated list of readings belonging to a user.
+export const getReadings = async (userId, { page = 1, limit = 20 } = {}) => {
+  const offset = (page - 1) * limit;
 
-  return result.rows;
+  const [readingsResult, countResult] = await Promise.all([
+    query(
+      `SELECT
+         id,
+         TO_CHAR(reading_date, 'YYYY-MM-DD') AS reading_date,
+         slot,
+         value,
+         created_at,
+         updated_at
+       FROM readings
+       WHERE user_id = $1
+       ORDER BY reading_date DESC,
+                CASE slot
+                  WHEN 'morning' THEN 1
+                  WHEN 'after_breakfast' THEN 2
+                  WHEN 'after_lunch' THEN 3
+                  WHEN 'after_dinner' THEN 4
+                END ASC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    ),
+
+    query(
+      `SELECT COUNT(*)::INTEGER AS total
+       FROM readings
+       WHERE user_id = $1`,
+      [userId]
+    ),
+  ]);
+
+  const total = countResult.rows[0].total;
+
+  return {
+    readings: readingsResult.rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
 // Retrieve a single reading belonging to a user.

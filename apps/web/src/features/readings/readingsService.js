@@ -1,9 +1,19 @@
+
 import api from '../../lib/api.js';
 
 export const readingsService = {
-  async getAll() {
-    const response = await api.get('/readings');
-    return response.data.data;
+  async getAll(page = 1, limit = 20) {
+    const response = await api.get('/readings', {
+      params: {
+        page,
+        limit,
+      },
+    });
+
+    return {
+      readings: response.data.data,
+      pagination: response.data.pagination,
+    };
   },
 
   async getById(id) {

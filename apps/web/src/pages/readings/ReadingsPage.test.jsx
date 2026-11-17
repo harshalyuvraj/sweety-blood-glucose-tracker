@@ -45,6 +45,21 @@ const sampleReadings = [
   },
 ];
 
+const samplePagination = {
+  page: 1,
+  limit: 20,
+  total: 2,
+  totalPages: 1,
+};
+
+const paginatedResponse = (
+  readings = sampleReadings,
+  pagination = samplePagination
+) => ({
+  readings,
+  pagination,
+});
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -56,19 +71,24 @@ describe('ReadingsPage', () => {
 
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    readingsServiceMock.getAll.mockResolvedValue(sampleReadings);
+    readingsServiceMock.getAll.mockResolvedValue(
+      paginatedResponse()
+    );
+
     readingsServiceMock.create.mockResolvedValue({
       id: 'reading-3',
       reading_date: '2026-11-17',
       slot: 'morning',
       value: 120,
     });
+
     readingsServiceMock.update.mockResolvedValue({
       id: 'reading-1',
       reading_date: '2026-11-17',
       slot: 'after_breakfast',
       value: 160,
     });
+
     readingsServiceMock.remove.mockResolvedValue({
       success: true,
       message: 'Reading deleted successfully.',
@@ -81,24 +101,31 @@ describe('ReadingsPage', () => {
     expect(
       await screen.findByRole('heading', {
         name: /blood glucose readings/i,
-      }),
+      })
     ).toBeInTheDocument();
 
     expect(screen.getByText('After Breakfast')).toBeInTheDocument();
     expect(screen.getByText('150')).toBeInTheDocument();
     expect(screen.getByText('115')).toBeInTheDocument();
 
-    expect(readingsServiceMock.getAll).toHaveBeenCalledOnce();
+    expect(readingsServiceMock.getAll).toHaveBeenCalledWith(1, 20);
     expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   it('displays an empty state when there are no readings', async () => {
-    readingsServiceMock.getAll.mockResolvedValue([]);
+    readingsServiceMock.getAll.mockResolvedValue(
+      paginatedResponse([], {
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
+      })
+    );
 
     render(<ReadingsPage />);
 
     expect(
-      await screen.findByText('No readings yet'),
+      await screen.findByText('No readings yet')
     ).toBeInTheDocument();
 
     expect(screen.getByText('0')).toBeInTheDocument();
@@ -116,11 +143,11 @@ describe('ReadingsPage', () => {
     render(<ReadingsPage />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Unable to retrieve readings.',
+      'Unable to retrieve readings.'
     );
   });
 
-  it('creates a new reading', async () => {
+  it('creates a new reading and refreshes the list', async () => {
     const user = userEvent.setup();
 
     render(<ReadingsPage />);
@@ -128,16 +155,16 @@ describe('ReadingsPage', () => {
     await screen.findByText('After Breakfast');
 
     await user.click(
-      screen.getByRole('button', { name: /add reading/i }),
+      screen.getByRole('button', { name: /add reading/i })
     );
 
     expect(
-      screen.getByRole('dialog', { name: /add new reading/i }),
+      screen.getByRole('dialog', { name: /add new reading/i })
     ).toBeInTheDocument();
 
     await user.selectOptions(
       screen.getByLabelText(/time slot/i),
-      'morning',
+      'morning'
     );
 
     const glucoseInput = screen.getByLabelText(/glucose level/i);
@@ -145,7 +172,7 @@ describe('ReadingsPage', () => {
     await user.type(glucoseInput, '120');
 
     await user.click(
-      screen.getByRole('button', { name: /save reading/i }),
+      screen.getByRole('button', { name: /save reading/i })
     );
 
     await waitFor(() => {
@@ -156,14 +183,16 @@ describe('ReadingsPage', () => {
       });
     });
 
-    expect(await screen.findByText('120')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(readingsServiceMock.getAll).toHaveBeenCalledTimes(2);
+    });
 
     expect(
-      screen.queryByRole('dialog'),
+      screen.queryByRole('dialog')
     ).not.toBeInTheDocument();
   });
 
-  it('updates an existing reading', async () => {
+  it('updates an existing reading and refreshes the list', async () => {
     const user = userEvent.setup();
 
     render(<ReadingsPage />);
@@ -173,11 +202,11 @@ describe('ReadingsPage', () => {
     await user.click(
       screen.getByRole('button', {
         name: /edit after breakfast reading/i,
-      }),
+      })
     );
 
     expect(
-      screen.getByRole('dialog', { name: /edit reading/i }),
+      screen.getByRole('dialog', { name: /edit reading/i })
     ).toBeInTheDocument();
 
     expect(screen.getByLabelText(/glucose level/i)).toHaveValue(150);
@@ -187,7 +216,7 @@ describe('ReadingsPage', () => {
     await user.type(glucoseInput, '160');
 
     await user.click(
-      screen.getByRole('button', { name: /update reading/i }),
+      screen.getByRole('button', { name: /update reading/i })
     );
 
     await waitFor(() => {
@@ -197,11 +226,13 @@ describe('ReadingsPage', () => {
           reading_date: '2026-11-17',
           slot: 'after_breakfast',
           value: 160,
-        },
+        }
       );
     });
 
-    expect(await screen.findByText('160')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(readingsServiceMock.getAll).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('deletes a reading after confirmation', async () => {
@@ -214,7 +245,7 @@ describe('ReadingsPage', () => {
     await user.click(
       screen.getByRole('button', {
         name: /delete after breakfast reading/i,
-      }),
+      })
     );
 
     expect(window.confirm).toHaveBeenCalledOnce();
@@ -223,8 +254,9 @@ describe('ReadingsPage', () => {
       expect(readingsServiceMock.remove).toHaveBeenCalledWith('reading-1');
     });
 
-    expect(screen.queryByText('150')).not.toBeInTheDocument();
-    expect(screen.getByText('115')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(readingsServiceMock.getAll).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('does not delete a reading when confirmation is cancelled', async () => {
@@ -239,7 +271,7 @@ describe('ReadingsPage', () => {
     await user.click(
       screen.getByRole('button', {
         name: /delete after breakfast reading/i,
-      }),
+      })
     );
 
     expect(window.confirm).toHaveBeenCalledOnce();
@@ -265,13 +297,98 @@ describe('ReadingsPage', () => {
     await user.click(
       screen.getByRole('button', {
         name: /delete after breakfast reading/i,
-      }),
+      })
     );
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Unable to delete this reading.',
+      'Unable to delete this reading.'
     );
 
     expect(screen.getByText('150')).toBeInTheDocument();
+  });
+
+  it('displays pagination controls when multiple pages exist', async () => {
+    readingsServiceMock.getAll.mockResolvedValue(
+      paginatedResponse(sampleReadings, {
+        page: 1,
+        limit: 20,
+        total: 45,
+        totalPages: 3,
+      })
+    );
+
+    render(<ReadingsPage />);
+
+    const nextButton = await screen.findByRole('button', {
+      name: /next/i,
+    });
+
+    expect(screen.getByText('45')).toBeInTheDocument();
+
+    expect(
+      screen.getByRole('button', { name: /previous/i })
+    ).toBeDisabled();
+
+    expect(nextButton).toBeEnabled();
+  });
+
+  it('loads the next page when Next is clicked', async () => {
+    const user = userEvent.setup();
+
+    readingsServiceMock.getAll
+      .mockResolvedValueOnce(
+        paginatedResponse(sampleReadings, {
+          page: 1,
+          limit: 20,
+          total: 25,
+          totalPages: 2,
+        })
+      )
+      .mockResolvedValueOnce(
+        paginatedResponse(
+          [
+            {
+              id: 'reading-21',
+              reading_date: '2026-10-20',
+              slot: 'morning',
+              value: 130,
+            },
+          ],
+          {
+            page: 2,
+            limit: 20,
+            total: 25,
+            totalPages: 2,
+          }
+        )
+      );
+
+    render(<ReadingsPage />);
+
+    await screen.findByText('150');
+
+    await user.click(
+      screen.getByRole('button', { name: /next/i })
+    );
+
+    expect(await screen.findByText('130')).toBeInTheDocument();
+
+    expect(readingsServiceMock.getAll).toHaveBeenLastCalledWith(2, 20);
+
+    expect(screen.getByText(/showing page/i)).toBeInTheDocument();
+
+    expect(
+      screen.getByRole('button', { name: /next/i })
+    ).toBeDisabled();
+  });
+
+  it('does not display pagination controls when there is only one page', async () => {
+    render(<ReadingsPage />);
+
+    await screen.findByText('After Breakfast');
+
+    expect(
+      screen.queryByRole('button', { name: /next/i })
+    ).not.toBeInTheDocument();
   });
 });

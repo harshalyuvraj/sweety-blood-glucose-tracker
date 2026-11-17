@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createReadingSchema,
   updateReadingSchema,
+  getReadingsQuerySchema,
   READING_SLOTS,
 } from './readings.validation.js';
 
@@ -88,4 +89,43 @@ describe('Reading validation', () => {
 
     expect(result.success).toBe(true);
   });
+});
+
+describe('Get readings query validation', () => {
+  it('uses default pagination values when parameters are omitted', () => {
+    expect(getReadingsQuerySchema.parse({})).toEqual({
+      page: 1,
+      limit: 20,
+    });
+  });
+
+  it('converts string query parameters into numbers', () => {
+    expect(
+      getReadingsQuerySchema.parse({
+        page: '2',
+        limit: '10',
+      }),
+    ).toEqual({
+      page: 2,
+      limit: 10,
+    });
+  });
+
+  it.each(['0', '-1', '1.5', 'invalid'])(
+    'rejects an invalid page value: %s',
+    (page) => {
+      expect(
+        getReadingsQuerySchema.safeParse({ page }).success,
+      ).toBe(false);
+    },
+  );
+
+  it.each(['0', '101', '1.5', 'invalid'])(
+    'rejects an invalid limit value: %s',
+    (limit) => {
+      expect(
+        getReadingsQuerySchema.safeParse({ limit }).success,
+      ).toBe(false);
+    },
+  );
 });

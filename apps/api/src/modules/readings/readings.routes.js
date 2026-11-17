@@ -7,6 +7,7 @@ import { validate } from '../../middleware/validate.js';
 import {
   createReadingSchema,
   updateReadingSchema,
+  getReadingsQuerySchema,
 } from './readings.validation.js';
 
 import {
@@ -25,8 +26,8 @@ router.use(authenticate);
 // POST /api/readings
 router.post('/', validate(createReadingSchema), create);
 
-// GET /api/readings
-router.get('/', getAll);
+// GET /api/readings?page=1&limit=20
+router.get('/', validate(getReadingsQuerySchema, 'query'), getAll);
 
 // GET /api/readings/:id
 router.get('/:id', getOne);

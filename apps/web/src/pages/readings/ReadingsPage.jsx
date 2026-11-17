@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+
+import { useCallback, useEffect, useState } from 'react';
 import {
   Activity,
   CalendarDays,
@@ -6,22 +7,19 @@ import {
   X,
   Pencil,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { readingsService } from '../../features/readings/readingsService.js';
 import ReadingForm from '../../features/readings/components/ReadingForm.jsx';
+
+const PAGE_SIZE = 20;
 
 const SLOT_LABELS = {
   morning: 'Morning',
   after_breakfast: 'After Breakfast',
   after_lunch: 'After Lunch',
   after_dinner: 'After Dinner',
-};
-
-const SLOT_ORDER = {
-  morning: 1,
-  after_breakfast: 2,
-  after_lunch: 3,
-  after_dinner: 4,
 };
 
 function formatDate(dateString) {
@@ -35,18 +33,11 @@ function formatDate(dateString) {
   }).format(new Date(year, month - 1, day));
 }
 
-function sortReadings(items) {
-  return [...items].sort((a, b) => {
-    const dateComparison = b.reading_date.localeCompare(a.reading_date);
-
-    if (dateComparison !== 0) return dateComparison;
-
-    return SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot];
-  });
-}
-
 function ReadingsPage() {
   const [readings, setReadings] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -54,55 +45,65 @@ function ReadingsPage() {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState('');
 
-  useEffect(() => {
-    async function fetchReadings() {
-      try {
-        setIsLoading(true);
-        setError('');
+  // Fetch readings for the requested page.
+  const fetchReadings = useCallback(async (requestedPage = page) => {
+    try {
+      setIsLoading(true);
+      setError('');
 
-        const data = await readingsService.getAll();
-        setReadings(data);
-      } catch (err) {
-        setError(
-          err.response?.data?.message ||
-            'Unable to load your readings. Please try again.',
-        );
-      } finally {
-        setIsLoading(false);
-      }
+      const result = await readingsService.getAll(
+        requestedPage,
+        PAGE_SIZE
+      );
+
+      setReadings(result.readings);
+      setPagination(result.pagination);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          'Unable to load your readings. Please try again.'
+      );
+    } finally {
+      setIsLoading(false);
     }
+  }, [page]);
 
-    fetchReadings();
-  }, []);
+  useEffect(() => {
+    fetchReadings(page);
+  }, [fetchReadings, page]);
 
+  // Create a new reading.
   async function handleCreateReading(readingData) {
-    const newReading = await readingsService.create(readingData);
+    await readingsService.create(readingData);
 
-    setReadings((previous) => sortReadings([...previous, newReading]));
     setIsModalOpen(false);
+    setSelectedReading(null);
+
+    // New readings appear at the beginning of the list.
+    if (page !== 1) {
+      setPage(1);
+    } else {
+      await fetchReadings(1);
+    }
   }
 
+  // Update an existing reading.
   async function handleUpdateReading(readingData) {
-    const updatedReading = await readingsService.update(
+    await readingsService.update(
       selectedReading.id,
-      readingData,
-    );
-
-    setReadings((previous) =>
-      sortReadings(
-        previous.map((reading) =>
-          reading.id === updatedReading.id ? updatedReading : reading,
-        ),
-      ),
+      readingData
     );
 
     setIsModalOpen(false);
     setSelectedReading(null);
+
+    await fetchReadings(page);
   }
 
+  // Delete a reading.
   async function handleDeleteReading(reading) {
     const confirmed = window.confirm(
-      `Are you sure you want to delete the ${SLOT_LABELS[reading.slot]} reading (${reading.value} mg/dL)?`,
+      `Are you sure you want to delete the ${SLOT_LABELS[reading.slot]} reading (${reading.value} mg/dL)?`
     );
 
     if (!confirmed) return;
@@ -113,13 +114,19 @@ function ReadingsPage() {
 
       await readingsService.remove(reading.id);
 
-      setReadings((previous) =>
-        previous.filter((item) => item.id !== reading.id),
-      );
+      // Refresh the current page to keep the list and count accurate.
+      const result = await readingsService.getAll(page, PAGE_SIZE);
+
+      if (result.readings.length === 0 && page > 1) {
+        setPage(page - 1);
+      } else {
+        setReadings(result.readings);
+        setPagination(result.pagination);
+      }
     } catch (err) {
       setDeleteError(
         err.response?.data?.message ||
-          'Unable to delete the reading. Please try again.',
+          'Unable to delete the reading. Please try again.'
       );
     } finally {
       setDeletingId(null);
@@ -140,6 +147,9 @@ function ReadingsPage() {
     setIsModalOpen(false);
     setSelectedReading(null);
   }
+
+  const totalPages = pagination?.totalPages ?? 0;
+  const totalReadings = pagination?.total ?? 0;
 
   return (
     <div className="space-y-8">
@@ -171,7 +181,7 @@ function ReadingsPage() {
             Total Recorded Readings
           </p>
           <p className="mt-2 text-3xl font-bold text-slate-900">
-            {isLoading ? '...' : readings.length}
+            {isLoading ? '...' : totalReadings}
           </p>
         </div>
 
@@ -190,6 +200,7 @@ function ReadingsPage() {
             {deleteError}
           </div>
         )}
+
         <div className="border-b border-slate-200 px-6 py-5">
           <h2 className="font-semibold text-slate-900">
             All Readings
@@ -225,69 +236,113 @@ function ReadingsPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Date</th>
-                  <th className="px-6 py-4 font-medium">Time Slot</th>
-                  <th className="px-6 py-4 font-medium">Glucose Level</th>
-                  <th className="px-6 py-4 text-right font-medium">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100">
-                {readings.map((reading) => (
-                  <tr
-                    key={reading.id}
-                    className="transition-colors hover:bg-slate-50"
-                  >
-                    <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-700">
-                      {formatDate(reading.reading_date)}
-                    </td>
-
-                    <td className="whitespace-nowrap px-6 py-4 text-slate-600">
-                      {SLOT_LABELS[reading.slot] || reading.slot}
-                    </td>
-
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <span className="font-semibold text-slate-900">
-                        {reading.value}
-                      </span>
-                      <span className="ml-2 text-slate-500">
-                        mg/dL
-                      </span>
-                    </td>
-
-                    <td className="whitespace-nowrap px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(reading)}
-                          aria-label={`Edit ${SLOT_LABELS[reading.slot]} reading`}
-                          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50"
-                        >
-                          <Pencil size={16} />
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteReading(reading)}
-                          disabled={deletingId === reading.id}
-                          aria-label={`Delete ${SLOT_LABELS[reading.slot]} reading`}
-                          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Trash2 size={16} />
-                          {deletingId === reading.id ? 'Deleting...' : 'Delete'}
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-6 py-4 font-medium">Date</th>
+                    <th className="px-6 py-4 font-medium">Time Slot</th>
+                    <th className="px-6 py-4 font-medium">Glucose Level</th>
+                    <th className="px-6 py-4 text-right font-medium">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+
+                <tbody className="divide-y divide-slate-100">
+                  {readings.map((reading) => (
+                    <tr
+                      key={reading.id}
+                      className="transition-colors hover:bg-slate-50"
+                    >
+                      <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-700">
+                        {formatDate(reading.reading_date)}
+                      </td>
+
+                      <td className="whitespace-nowrap px-6 py-4 text-slate-600">
+                        {SLOT_LABELS[reading.slot] || reading.slot}
+                      </td>
+
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <span className="font-semibold text-slate-900">
+                          {reading.value}
+                        </span>
+                        <span className="ml-2 text-slate-500">
+                          mg/dL
+                        </span>
+                      </td>
+
+                      <td className="whitespace-nowrap px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(reading)}
+                            aria-label={`Edit ${SLOT_LABELS[reading.slot]} reading`}
+                            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50"
+                          >
+                            <Pencil size={16} />
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReading(reading)}
+                            disabled={deletingId === reading.id}
+                            aria-label={`Delete ${SLOT_LABELS[reading.slot]} reading`}
+                            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Trash2 size={16} />
+                            {deletingId === reading.id
+                              ? 'Deleting...'
+                              : 'Delete'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-200 px-6 py-4 sm:flex-row">
+                <p className="text-sm text-slate-500">
+                  Showing page{' '}
+                  <span className="font-semibold text-slate-700">
+                    {page}
+                  </span>{' '}
+                  of{' '}
+                  <span className="font-semibold text-slate-700">
+                    {totalPages}
+                  </span>
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((previous) => previous - 1)}
+                    disabled={page <= 1 || isLoading}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ChevronLeft size={16} />
+                    Previous
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPage((previous) => previous + 1)}
+                    disabled={page >= totalPages || isLoading}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </section>
 
