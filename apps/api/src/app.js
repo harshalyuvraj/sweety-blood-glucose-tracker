@@ -1,48 +1,43 @@
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { query } from './db/query.js';
 import authRoutes from './modules/auth/auth.routes.js';
-import { authenticate } from './middleware/authenticate.js';
+import readingsRoutes from './modules/readings/readings.routes.js';
+import reportsRoutes from './modules/reports/reports.routes.js';
 
 const app = express();
 
 app.use(helmet());
 
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-}));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  })
+);
 
 app.use(express.json());
-app.use('/api/auth', authRoutes);
 
-// Temporary endpoint to test JWT authentication
-app.get('/api/auth/test-protected', authenticate, (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Authentication successful.',
-    userId: req.user.id,
-  });
-});
+app.use('/api/auth', authRoutes);
+app.use('/api/readings', readingsRoutes);
+app.use('/api/reports', reportsRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {
-    const result = await query(
-      'SELECT NOW() AS database_time'
-    );
+    const result = await query('SELECT NOW() AS database_time');
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: 'Sweety API is running',
-      database: 'connected',
-      timestamp: result.rows[0].database_time,
+      message: 'Sweety API and database are running.',
+      databaseTime: result.rows[0].database_time,
     });
   } catch (error) {
-    console.error('Database health check failed:', error.message);
+    console.error('Health check failed:', error);
 
-    res.status(503).json({
+    return res.status(500).json({
       success: false,
-      message: 'Database connection unavailable',
+      message: 'Database connection failed.',
     });
   }
 });
