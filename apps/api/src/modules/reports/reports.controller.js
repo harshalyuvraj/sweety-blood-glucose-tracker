@@ -5,6 +5,8 @@ import {
   getPreviousMonthReport,
 } from './reports.service.js';
 
+import { logActivity } from '../activity/activity.service.js';
+
 const handleError = (res, error) => {
   console.error('Reports error:', error);
 
@@ -23,6 +25,8 @@ export const dailyReport = async (req, res) => {
       req.validated.query.date
     );
 
+    await logActivity(req.user.id, 'report_viewed');
+
     return res.status(200).json({
       success: true,
       data: report,
@@ -39,6 +43,8 @@ export const monthToDateReport = async (req, res) => {
       req.validated.query.date
     );
 
+    await logActivity(req.user.id, 'report_viewed');
+
     return res.status(200).json({
       success: true,
       data: report,
@@ -51,6 +57,8 @@ export const monthToDateReport = async (req, res) => {
 export const previousMonthReport = async (req, res) => {
   try {
     const report = await getPreviousMonthReport(req.user.id);
+
+    await logActivity(req.user.id, 'report_viewed');
 
     return res.status(200).json({
       success: true,

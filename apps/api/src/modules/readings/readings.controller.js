@@ -7,10 +7,14 @@ import {
   deleteReading,
 } from './readings.service.js';
 
+import { logActivity } from '../activity/activity.service.js';
+
 // POST /api/readings
 export const create = async (req, res) => {
   try {
     const reading = await createReading(req.user.id, req.body);
+
+    await logActivity(req.user.id, 'reading_created');
 
     return res.status(201).json({
       success: true,
@@ -63,6 +67,8 @@ export const update = async (req, res) => {
       req.body
     );
 
+    await logActivity(req.user.id, 'reading_updated');
+
     return res.status(200).json({
       success: true,
       message: 'Reading updated successfully.',
@@ -77,6 +83,8 @@ export const update = async (req, res) => {
 export const remove = async (req, res) => {
   try {
     await deleteReading(req.user.id, req.params.id);
+
+    await logActivity(req.user.id, 'reading_deleted');
 
     return res.status(200).json({
       success: true,

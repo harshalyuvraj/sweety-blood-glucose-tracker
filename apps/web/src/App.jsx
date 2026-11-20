@@ -4,8 +4,10 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 import ProtectedRoute from './features/auth/ProtectedRoute.jsx';
+import AdminRoute from './features/auth/AdminRoute.jsx';
 import ReadingsPage from './pages/readings/ReadingsPage.jsx';
 import ReportsPage from './pages/reports/ReportsPage.jsx';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx';
 
 function App() {
   return (
@@ -21,6 +23,14 @@ function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/readings" element={<ReadingsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+
+            {/* Admin-only routes */}
+            <Route element={<AdminRoute />}>
+              <Route
+                path="/admin"
+                element={<AdminDashboardPage />}
+              />
+            </Route>
           </Route>
         </Route>
 

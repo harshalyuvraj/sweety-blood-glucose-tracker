@@ -6,6 +6,7 @@ import { query } from './db/query.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import readingsRoutes from './modules/readings/readings.routes.js';
 import reportsRoutes from './modules/reports/reports.routes.js';
+import adminRoutes from './modules/admin/admin.routes.js';
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/readings', readingsRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {

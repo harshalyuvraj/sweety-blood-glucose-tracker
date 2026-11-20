@@ -6,7 +6,9 @@ import {
   FileBarChart,
   HeartPulse,
   UserRound,
+  ShieldCheck,
 } from 'lucide-react';
+import { useAuth } from '../../features/auth/AuthContext.jsx';
 
 const navigationItems = [
   {
@@ -27,6 +29,7 @@ const navigationItems = [
 ];
 
 function Sidebar() {
+  const { user } = useAuth();
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
       {/* Brand */}
@@ -68,6 +71,22 @@ function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
+
+        {user?.is_admin === true && (
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-brand-50 text-brand-700'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`
+            }
+          >
+            <ShieldCheck size={19} strokeWidth={2} />
+            <span>Admin Dashboard</span>
+          </NavLink>
+        )}
       </nav>
 
       {/* Profile */}
