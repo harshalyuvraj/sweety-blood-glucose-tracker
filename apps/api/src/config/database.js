@@ -10,12 +10,22 @@ dotenv.config({ path: envPath });
 
 const { Pool } = pg;
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: Number(process.env.DB_PORT || 5432),
-  database: process.env.DB_NAME || 'sweety',
-  user: process.env.DB_USER || 'sweety_user',
-  password: process.env.DB_PASSWORD,
+  ...(process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+      }
+    : {
+        host: process.env.DB_HOST || 'localhost',
+        port: Number(process.env.DB_PORT || 5432),
+        database: process.env.DB_NAME || 'sweety',
+        user: process.env.DB_USER || 'sweety_user',
+        password: process.env.DB_PASSWORD,
+      }),
+
+  ...(isProduction ? { ssl: { rejectUnauthorized: false } } : {}),
 
   max: 10,
   idleTimeoutMillis: 30000,

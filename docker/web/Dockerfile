@@ -23,7 +23,10 @@ RUN pnpm build
 FROM nginx:alpine AS runtime
 
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
-COPY docker/web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/web/nginx.conf /etc/nginx/templates/default.conf.template
+
+ENV API_URL=http://api:5000
+ENV NGINX_ENVSUBST_FILTER=^API_URL$
 
 EXPOSE 80
 
